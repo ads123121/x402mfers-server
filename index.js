@@ -26,7 +26,7 @@ app.post("/mint", (req, res) => {
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
-    message: "x402 Mint Server is running"
+    message: "x402 Mint Server is running2"
   });
 });
 
