@@ -12,11 +12,17 @@ const TREASURY_ADDRESS = process.env.TREASURY_ADDRESS || "0xf486085502ED56Bf83a8
 
 const NFT_ABI = ["function mint(address to) public"];
 
+// Простая проверка адреса
+function isValidAddress(addr) {
+  return addr && addr.length === 42 && addr.startsWith("0x");
+}
+
 app.post("/mint", async (req, res) => {
   try {
-    const userAddress = req.body.userAddress || req.query.userAddress;
-    
-    if (!userAddress || !ethers.isAddress(userAddress)) {
+    const userAddress = req.body.userAddress;
+
+    // Требуем платёж если адреса нет
+    if (!userAddress || !isValidAddress(userAddress)) {
       return res.status(402).json({
         x402Version: 1.0,
         error: "payment_required",
@@ -25,7 +31,7 @@ app.post("/mint", async (req, res) => {
           network: "base",
           maxAmountRequired: "1000000",
           resource: "https://x402mfers-server.vercel.app/mint",
-          description: "Mint x402MFERS NFT",
+          description: "Mint x402 NFT",
           mimeType: "application/json",
           payTo: TREASURY_ADDRESS,
           maxTimeoutSeconds: 300,
@@ -34,35 +40,27 @@ app.post("/mint", async (req, res) => {
       });
     }
 
-    // Если платёж получен — минтим NFT
+    // Минтим NFT
     const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
     const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, NFT_ABI, wallet);
 
     const tx = await contract.mint(userAddress);
-    const receipt = await tx.wait();
+    await tx.wait();
 
     res.json({
       success: true,
-      txHash: receipt.hash,
-      nftAddress: CONTRACT_ADDRESS,
-      userAddress: userAddress,
-      message: "NFT minted successfully!"
+      txHash: tx.hash,
+      message: "NFT minted!"
     });
 
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({
-      error: error.message || "Minting failed"
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
 app.get("/", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "x402 Mint Server is running"
-  });
+  res.json({ status: "ok", message: "x402 Server running" });
 });
 
 const PORT = process.env.PORT || 3000;
